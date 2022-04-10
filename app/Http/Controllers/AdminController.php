@@ -137,8 +137,10 @@ class AdminController extends Controller
     {
         /** @var Photo $photo */
         $photo = Photo::findOrFail($request->photoId);
+
         $photo->verified = 2;
         $photo->verification = 1;
+        $photo->public_friendly = $request->publicFriendly;
         $photo->save();
 
         $this->rewardXpToAdmin();
@@ -267,7 +269,9 @@ class AdminController extends Controller
         $photo->verification = 1;
         $photo->verified = 2;
         $photo->total_litter = 0;
+        $photo->public_friendly = $request->publicFriendly;
         $photo->save();
+
         $oldTags = $photo->tags();
 
         $user = User::find($photo->user_id);

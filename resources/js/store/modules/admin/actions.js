@@ -54,10 +54,11 @@ export const actions = {
     /**
      * Verify the image as correct (stage 2)
      */
-    async ADMIN_VERIFY_CORRECT (context)
+    async ADMIN_VERIFY_CORRECT (context, payload)
     {
         await axios.post('/admin/verifykeepimage', {
-            photoId: context.state.photo.id
+            photoId: context.state.photo.id,
+            publicFriendly: payload
         })
         .then(resp => {
             console.log('admin_verifiy_correct', resp);
@@ -89,14 +90,15 @@ export const actions = {
     /**
      * Verify the image, and update with new tags
      */
-    async ADMIN_UPDATE_WITH_NEW_TAGS (context)
+    async ADMIN_UPDATE_WITH_NEW_TAGS (context, payload)
     {
         let photoId = context.state.photo.id;
 
         await axios.post('/admin/update-tags', {
             photoId: photoId,
             tags: context.rootState.litter.tags[photoId],
-            custom_tags: context.rootState.litter.customTags[photoId]
+            custom_tags: context.rootState.litter.customTags[photoId],
+            publicFriendly: payload
         })
         .then(response => {
             console.log('admin_verify_keep', response);

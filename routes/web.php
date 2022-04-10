@@ -289,7 +289,7 @@ Route::group(['prefix' => '/admin'], function () {
     Route::post('/contentsupdatedelete', 'AdminController@updateDelete');
 
     // Contents of an image updated, Keep the image
-    Route::post('/update-tags', 'AdminController@updateTags');
+    Route::post('/update-tags', 'AdminController@clusters');
 
     // Delete an image and its record
     Route::post('/destroy', 'AdminController@destroy');

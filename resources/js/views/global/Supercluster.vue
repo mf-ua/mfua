@@ -30,7 +30,7 @@ import dropdown from './select-dropdown';
 
 var map;
 var clusters;
-var litterArtPoints;
+var publicClusters, adminClusters;
 var points;
 var prevZoom = MIN_ZOOM;
 
@@ -103,10 +103,16 @@ function createGlobalGroups ()
 
     if (!globalControllerShowing)
     {
-        globalLayerController = L.control.layers(null, null).addTo(map);
+        let overlays = {};
 
-        globalLayerController.addOverlay(clusters, 'Global');
-        globalLayerController.addOverlay(litterArtPoints, 'Litter Art');
+        if (window.mfua.$store.state.user.admin)
+        {
+            overlays['Admin'] = new L.LayerGroup();
+        }
+
+        overlays['Clusters'] = new L.LayerGroup();
+
+        globalLayerController = L.control.layers(null, overlays).addTo(map);
 
         globalControllerShowing = true;
     }
@@ -169,45 +175,6 @@ function onEachFeature (feature, layer)
 }
 
 /**
- * On each art point...
- *
- * Todo: Smooth zoom to that piece
- */
-function onEachArtFeature (feature, layer)
-{
-    layer.on('click', function (e)
-    {
-        map.flyTo(feature.geometry.coordinates, 14, {
-            animate: true,
-            duration: 10
-        });
-
-        const user = mapHelper.formatUserName(feature.properties.name, feature.properties.username);
-
-        const url = new URL(window.location.href);
-        url.searchParams.set('lat', feature.geometry.coordinates[0]);
-        url.searchParams.set('lon', feature.geometry.coordinates[1]);
-        url.searchParams.set('zoom', CLUSTER_ZOOM_THRESHOLD);
-        url.searchParams.set('photo', feature.properties.photo_id);
-
-        L.popup(mapHelper.popupOptions)
-            .setLatLng(feature.geometry.coordinates)
-            .setContent(
-                mapHelper.getMapImagePopupContent(
-                    feature.properties.filename,
-                    feature.properties.result_string,
-                    feature.properties.datetime,
-                    feature.properties.picked_up,
-                    user,
-                    feature.properties.team,
-                    url.toString()
-                )
-            )
-            .openOn(map);
-    });
-}
-
-/**
  * Get any active layers
  *
  * @return layers|null
@@ -257,6 +224,9 @@ export default {
 
         map.scrollWheelZoom = true;
 
+        // bind vue instance to the window so we can access it outside of Vue
+        window.mfua = this;
+
         this.flyToLocationFromURL();
 
         const date = new Date();
@@ -281,14 +251,6 @@ export default {
 
         // TODO refactor this out
         clusters.addData(this.$store.state.globalmap.geojson.features);
-
-        litterArtPoints = L.geoJSON(null, {
-            pointToLayer: createArtIcon,
-            onEachFeature: onEachArtFeature
-        });
-
-        // TODO refactor this out too
-        litterArtPoints.addData(this.$store.state.globalmap.artData.features);
 
         map.on('moveend', this.update);
 

@@ -66,7 +66,8 @@ class Photo extends Model
         'five_hundred_square_filepath',
         'bbox_500_assigned_to',
 
-        'address_array'
+        'address_array',
+        'public_friendly'
     ];
 
     protected $appends = ['selected', 'picked_up'];
