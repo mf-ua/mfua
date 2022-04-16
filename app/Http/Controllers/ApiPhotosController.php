@@ -182,6 +182,10 @@ class ApiPhotosController extends Controller
         $state = $this->uploadHelper->getStateFromAddressArray($country, $addressArray);
         $city = $this->uploadHelper->getCityFromAddressArray($country, $state, $addressArray);
 
+        if ($country->shortcode !== config('app.allow_only_uploads_from_country')) {
+            abort(500, "Only images from ".config('app.allow_only_uploads_from_country')." can currently be uploaded");
+        }
+
         /** @var Photo $photo */
         $photo = $user->photos()->create([
             'filename' => $imageName,
@@ -199,7 +203,7 @@ class ApiPhotosController extends Controller
             'country' => $country->country,
             'country_code' => $country->shortcode,
             'model' => $model,
-            'remaining' => false, // TODO
+            'remaining' => $request->presence,
             'platform' => 'mobile',
             'geohash' => GeoHash::encode($lat, $lon),
             'team_id' => $user->active_team,
@@ -267,7 +271,7 @@ class ApiPhotosController extends Controller
         dispatch (new AddTags(
             $user->id,
             $photo->id,
-            ($request->litter ?? $request->tags) ?? [],
+            convert_tags(($request->litter ?? $request->tags) ?? []),
             $request->custom_tags ?? [],
             $request->picked_up
         ));
@@ -299,7 +303,7 @@ class ApiPhotosController extends Controller
         dispatch (new AddTags(
             auth()->id(),
             $photo->id,
-            $request->tags,
+            convert_tags($request->tags),
             $request->custom_tags,
             $request->picked_up
         ));

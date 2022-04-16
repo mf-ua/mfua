@@ -3,6 +3,7 @@
 namespace App\Models\User;
 
 use App\Models\AI\Annotation;
+use App\Models\Category;
 use App\Models\CustomTag;
 use App\Models\Photo;
 use App\Models\Teams\Team;
@@ -126,16 +127,11 @@ class User extends Authenticatable
      */
     public function getTotalCategoriesAttribute ()
     {
-        $categories = Photo::categories();
-
         $totals = [];
 
-        foreach ($categories as $category)
-        {
-            if ($category !== "brands")
-            {
-                $totals[$category] = (int)Redis::hget("user:$this->id", $category);
-            }
+        /** @var Category $category */
+        foreach (Category::all() as $category) {
+            $totals[$category->name] = (int)Redis::hget("user:$this->id", $category->name);
         }
 
         return $totals;
@@ -260,61 +256,6 @@ class User extends Authenticatable
     public function customTags (): HasManyThrough
     {
         return $this->hasManyThrough(CustomTag::class, Photo::class);
-    }
-
-    public function smoking ()
-    {
-        return $this->hasManyThrough('App\Smoking', 'App\Models\Photo');
-    }
-
-    public function alcohol ()
-    {
-        return $this->hasManyThrough('App\Alcohol', 'App\Models\Photo');
-    }
-
-    public function coffee ()
-    {
-        return $this->hasManyThrough('App\Coffee', 'App\Models\Photo');
-    }
-
-    public function food ()
-    {
-        return $this->hasManyThrough('App\Food', 'App\Models\Photo');
-    }
-
-    public function softdrinks ()
-    {
-        return $this->hasManyThrough('App\SoftDrinks', 'App\Models\Photo');
-    }
-
-    public function drugs ()
-    {
-        return $this->hasManyThrough('App\Drugs', 'App\Models\Photo');
-    }
-
-    public function sanitary ()
-    {
-        return $this->hasManyThrough('App\Sanitary', 'App\Models\Photo');
-    }
-
-    public function other ()
-    {
-        return $this->hasManyThrough('App\Other', 'App\Models\Photo');
-    }
-
-    public function coastal ()
-    {
-        return $this->hasManyThrough('App\Coastal', 'App\Models\Photo');
-    }
-
-    public function pathway ()
-    {
-        return $this->hasManyThrough('App\Pathway', 'App\Models\Photo');
-    }
-
-    public function art ()
-    {
-        return $this->hasManyThrough('App\Art', 'App\Models\Photo');
     }
 
     /**
