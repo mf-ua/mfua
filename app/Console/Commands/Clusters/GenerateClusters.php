@@ -47,8 +47,6 @@ class GenerateClusters extends Command
             }
         }
 
-
-
         $finish = microtime(true);
         $this->newLine();
         $this->info("Total Time: " . ($finish - $start) . "\n");

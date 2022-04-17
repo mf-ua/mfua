@@ -170,5 +170,29 @@ export const actions = {
             .catch(err => {
                 console.error(err);
             });
+    },
+
+    /**
+     * Get the clusters that are not public friendly for admin only
+     *
+     * Includes backend middleware checl
+     */
+    async ADMIN_GET_CLUSTERS (context, payload)
+    {
+        await axios.get('/admin/global/clusters', {
+            params: {
+                zoom: payload.zoom,
+                year: payload.year,
+                bbox: null
+            }
+        })
+        .then(response => {
+            console.log('admin_get_clusters', response);
+
+            context.commit('updateGlobalAdminClusters', response.data);
+        })
+        .catch(error => {
+            console.error('admin_get_clusters', error);
+        });
     }
 };

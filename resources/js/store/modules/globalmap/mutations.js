@@ -64,11 +64,19 @@ export const mutations = {
 	// },
 
     /**
-     *
+     * Public friendly clusters
      */
 	updateGlobalData (state, payload)
     {
-		state.geojson = payload;
-	}
+		state.publicGeojson = payload;
+	},
+
+    /**
+     * Admin clusters (non public friendly)
+     */
+    updateGlobalAdminClusters (state, payload)
+    {
+        state.adminGeojson = payload;
+    }
 
 };

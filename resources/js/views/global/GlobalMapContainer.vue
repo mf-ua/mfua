@@ -36,10 +36,19 @@ export default {
 
         const year = parseInt((new URLSearchParams(window.location.search)).get('year')) || null;
 
+        // Get public friendly clusters
         await this.$store.dispatch('GET_CLUSTERS', {
             zoom: 2,
             year: year
         });
+
+        if (this.$store.state.user.admin) {
+            // Get clusters that are not public friendly
+            await this.$store.dispatch('ADMIN_GET_CLUSTERS', {
+                zoom: 2,
+                year: year
+            });
+        }
 
         this.$store.commit('globalLoading', false);
     },

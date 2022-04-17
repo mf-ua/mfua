@@ -4,7 +4,9 @@
         <div id="super" ref="super" />
 
         <!-- Websockets -->
-        <LiveEvents @fly-to-location="flyToLocation" />
+        <LiveEvents
+            @fly-to-location="flyToLocation"
+        />
     </div>
 </template>
 
@@ -103,16 +105,14 @@ function createGlobalGroups ()
 
     if (!globalControllerShowing)
     {
-        let overlays = {};
+        globalLayerController = L.control.layers(null, null).addTo(map);
 
-        if (window.mfua.$store.state.user.admin)
+        if (window.isAdmin)
         {
-            overlays['Admin'] = new L.LayerGroup();
+            globalLayerController.addOverlay(adminClusters, 'Admin');
         }
 
-        overlays['Clusters'] = new L.LayerGroup();
-
-        globalLayerController = L.control.layers(null, overlays).addTo(map);
+        globalLayerController.addOverlay(publicClusters, 'Public Friendly');
 
         globalControllerShowing = true;
     }
@@ -133,18 +133,8 @@ function createPointGroups ()
     if (!pointsControllerShowing)
     {
         const overlays = {
-            Alcohol: new L.LayerGroup(),
-            Brands: new L.LayerGroup(),
-            Coastal: new L.LayerGroup(),
-            Coffee: new L.LayerGroup(),
-            Dumping: new L.LayerGroup(),
-            Food: new L.LayerGroup(),
-            Industrial: new L.LayerGroup(),
-            Other: new L.LayerGroup(),
-            PetSurprise: new L.LayerGroup(),
-            Sanitary: new L.LayerGroup(),
-            Smoking: new L.LayerGroup(),
-            SoftDrinks: new L.LayerGroup(),
+            Public: new L.LayerGroup(),
+            Admin: new L.LayerGroup(),
         };
 
         pointsLayerController = L.control.layers(null, overlays).addTo(map);
@@ -211,12 +201,11 @@ export default {
             visiblePoints: []
         }
     },
-    mounted ()
-    {
+    mounted () {
         /** 1. Create map object */
         map = L.map('super', {
-            center: [0, 0],
-            zoom: MIN_ZOOM,
+            center: [0,0],
+            zoom: 0,
             scrollWheelZoom: false,
             smoothWheelZoom: true,
             smoothSensitivity: 1,
@@ -241,16 +230,24 @@ export default {
             minZoom: MIN_ZOOM
         }).addTo(map);
 
-        map.attributionControl.addAttribution('Litter data &copy OpenLitterMap & Contributors ' + year + ' Clustering @ MapBox');
+        map.attributionControl.addAttribution('Litter data &copy MineFree.info & Contributors ' + year + ' Clustering @ MapBox');
 
         // Empty Layer Group that will receive the clusters data on the fly.
-        clusters = L.geoJSON(null, {
+        publicClusters = L.geoJSON(null, {
             pointToLayer: createClusterIcon,
             onEachFeature: onEachFeature,
         }).addTo(map);
 
-        // TODO refactor this out
-        clusters.addData(this.$store.state.globalmap.geojson.features);
+        publicClusters.addData(this.$store.state.globalmap.publicGeojson.features);
+
+        if (this.$store.state.user.admin) {
+            adminClusters = L.geoJSON(null, {
+                pointToLayer: createClusterIcon,
+                onEachFeature: onEachFeature,
+            }).addTo(map);
+
+            adminClusters.addData(this.$store.state.globalmap.adminGeojson.features);
+        }
 
         map.on('moveend', this.update);
 
@@ -290,7 +287,8 @@ export default {
             // Remove points when zooming out
             if (points)
             {
-                clusters.clearLayers();
+                publicClusters.clearLayers();
+                adminClusters.clearLayers();
                 points.remove();
             }
 
@@ -302,6 +300,26 @@ export default {
             {
                 createGlobalGroups();
 
+                if (window.isAdmin)
+                {
+                    await axios.get('/admin/global/clusters', {
+                        params: {
+                            zoom,
+                            bbox,
+                            year
+                        }
+                    })
+                    .then(response => {
+                        console.log('admin_get_clusters.update', response);
+
+                        adminClusters.clearLayers();
+                        adminClusters.addData(response.data);
+                    })
+                    .catch(error => {
+                        console.error('admin_get_clusters.update', error);
+                    });
+                }
+
                 await axios.get('/global/clusters', {
                     params: {
                         zoom,
@@ -312,8 +330,8 @@ export default {
                 .then(response => {
                     console.log('get_clusters.update', response);
 
-                    clusters.clearLayers();
-                    clusters.addData(response.data);
+                    publicClusters.clearLayers();
+                    publicClusters.addData(response.data);
                 })
                 .catch(error => {
                     console.error('get_clusters.update', error);
@@ -325,52 +343,118 @@ export default {
 
                 const layers = getActiveLayers();
 
-                await axios.get('/global/points', {
-                    params: {
-                        zoom,
-                        bbox,
-                        layers,
-                        year
-                    }
-                })
-                .then(response => {
-                    console.log('get_global_points', response);
+                if (window.isAdmin)
+                {
+                    await axios.get('/global/points', {
+                        params: {
+                            zoom,
+                            bbox,
+                            layers,
+                            year
+                        }
+                    })
+                    .then(response => {
+                        console.log('admin_get_global_points', response);
 
-                    this.visiblePoints = response.data.features;
+                        // Clear layer if prev layer is cluster.
+                        if (prevZoom < CLUSTER_ZOOM_THRESHOLD)
+                        {
+                            publicClusters.clearLayers();
+                            adminClusters.clearLayers();
+                        }
 
-                    // Clear layer if prev layer is cluster.
-                    if (prevZoom < CLUSTER_ZOOM_THRESHOLD)
-                    {
-                        clusters.clearLayers();
-                    }
+                        const data = response.data.features.map(feature => {
+                            return [feature.geometry.coordinates[0], feature.geometry.coordinates[1]];
+                        });
 
-                    const data = response.data.features.map(feature => {
-                        return [feature.geometry.coordinates[0], feature.geometry.coordinates[1]];
+                        // New way using webGL
+                        points = glify.points({
+                            map,
+                            data,
+                            size: 10,
+                            color: (e, point) => {
+
+                                const feature = response.data.features.find(f => {
+                                    return f.geometry.coordinates[0] === point[0]
+                                        && f.geometry.coordinates[1] === point[1];
+                                });
+
+                                if (!feature) {
+                                    return;
+                                }
+
+                                return (feature.properties.public_friendly)
+                                    ? { r: 0.054, g: 0.819, b: 0.27, a: 1 }
+                                    : { r: 1, g: 0, b: 0, a: 1 };
+                            },
+                            click:  (e, point, xy) => {
+                                const feature = response.data.features.find(f => {
+                                    return f.geometry.coordinates[0] === point[0]
+                                        && f.geometry.coordinates[1] === point[1];
+                                });
+
+                                if (!feature) {
+                                    return;
+                                }
+
+                                return this.renderLeafletPopup(feature, e.latlng)
+                            },
+                        });
+                    })
+                    .catch(error => {
+                        console.error('admin_get_global_points', error);
                     });
+                }
+                else
+                {
+                    await axios.get('/global/points', {
+                        params: {
+                            zoom,
+                            bbox,
+                            layers,
+                            year
+                        }
+                    })
+                    .then(response => {
+                        console.log('get_global_points', response);
 
-                    // New way using webGL
-                    points = glify.points({
-                        map,
-                        data,
-                        size: 10,
-                        color: { r: 0.054, g: 0.819, b: 0.27, a: 1 }, // 14, 209, 69 / 255
-                        click:  (e, point, xy) => {
-                            const feature = response.data.features.find(f => {
-                                return f.geometry.coordinates[0] === point[0]
-                                    && f.geometry.coordinates[1] === point[1];
-                            });
+                        this.visiblePoints = response.data.features;
 
-                            if (!feature) {
-                                return;
-                            }
+                        // Clear layer if prev layer is cluster.
+                        if (prevZoom < CLUSTER_ZOOM_THRESHOLD)
+                        {
+                            publicClusters.clearLayers();
+                            adminClusters.clearLayers();
+                        }
 
-                            return this.renderLeafletPopup(feature, e.latlng)
-                        },
+                        const data = response.data.features.map(feature => {
+                            return [feature.geometry.coordinates[0], feature.geometry.coordinates[1]];
+                        });
+
+                        // New way using webGL
+                        points = glify.points({
+                            map,
+                            data,
+                            size: 10,
+                            color: { r: 0.054, g: 0.819, b: 0.27, a: 1 }, // 14, 209, 69 / 255
+                            click:  (e, point, xy) => {
+                                const feature = response.data.features.find(f => {
+                                    return f.geometry.coordinates[0] === point[0]
+                                        && f.geometry.coordinates[1] === point[1];
+                                });
+
+                                if (!feature) {
+                                    return;
+                                }
+
+                                return this.renderLeafletPopup(feature, e.latlng)
+                            },
+                        });
+                    })
+                    .catch(error => {
+                        console.error('get_global_points', error);
                     });
-                })
-                .catch(error => {
-                    console.error('get_global_points', error);
-                });
+                }
             }
 
             prevZoom = zoom;
@@ -402,7 +486,8 @@ export default {
                         feature.properties.picked_up,
                         user,
                         feature.properties.team,
-                        url.toString()
+                        url.toString(),
+                        feature.properties.public_friendly
                     )
                 )
                 .openOn(map);

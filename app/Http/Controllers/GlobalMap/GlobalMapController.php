@@ -7,43 +7,14 @@ use App\Traits\FilterPhotosByGeoHashTrait;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 
 class GlobalMapController extends Controller
 {
     use FilterPhotosByGeoHashTrait;
 
     /**
-     * Return the Art data for the global map
-     *
-     * @return array points
-     */
-    public function artData(): array
-    {
-        $photos = Photo::query()
-            ->select(
-                'id',
-                'verified',
-                'user_id',
-                'team_id',
-                'result_string',
-                'filename',
-                'geohash',
-                'lat',
-                'lon',
-                'remaining',
-                'datetime'
-            )
-            ->where([
-                ['verified', '>=', 2],
-                ['art_id', '!=', null]
-            ])
-            ->get();
-
-        return $this->photosToGeojson($photos);
-    }
-
-    /**
-     * Get photos point data at zoom levels 16 or above
+     * Get public friendly point data at zoom levels 16 or above
      *
      * @return array
      */
@@ -61,8 +32,10 @@ class GlobalMapController extends Controller
                 'lat',
                 'lon',
                 'remaining',
-                'datetime'
+                'datetime',
+                'public_friendly'
             )
+//            ->where('public_friendly', true)
             ->with([
                 'user' => function ($query) {
                     $query->where('users.show_name_maps', 1)
