@@ -78,11 +78,13 @@ export const actions = {
         await axios.post('/admin/contentsupdatedelete', {
             photoId: context.state.photo.id,
             // categories: categories todo
-        }).then(response => {
+        })
+        .then(response => {
             console.log('admin_verify_delete', response);
 
             context.dispatch('GET_NEXT_ADMIN_PHOTO');
-        }).catch(error => {
+        })
+        .catch(error => {
             console.log(error);
         });
     },

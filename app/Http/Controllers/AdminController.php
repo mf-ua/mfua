@@ -148,6 +148,10 @@ class AdminController extends Controller
         $this->logAdminAction($photo, Route::getCurrentRoute()->getActionMethod());
 
         event (new TagsVerifiedByAdmin($photo->id));
+
+        return [
+            'success' => true
+        ];
     }
 
     /**

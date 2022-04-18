@@ -104,12 +104,20 @@
                             </div>
 
                             <div style="padding-top: 1em; text-align: center;">
-                                <button :class="update_new_tags_button" @click="updateNewTags" :disabled="checkUpdateTagsDisabled">
+                                <button
+                                    :class="update_new_tags_button"
+                                    @click="updateNewTags"
+                                    :disabled="checkUpdateTagsDisabled"
+                                >
                                     <span class="tooltip-text is-size-6">Update the image and save the new data.</span>
                                     Update with new tags
                                 </button>
 
-                                <button class="button is-large is-info tooltip mb-1" @click="skipPhoto" :disabled="processing">
+                                <button
+                                    class="button is-large is-info tooltip mb-1"
+                                    @click="skipPhoto"
+                                    :disabled="processing"
+                                >
                                     <span class="tooltip-text is-size-6">Skip this photo and verify the next one.</span>
                                     Skip
                                 </button>
