@@ -169,7 +169,7 @@ class AdminController extends Controller
         $photo->save();
 
         $tagUpdates = $this->calculateTagsDiffAction->run(
-            $photo->tags(),
+            $photo->compiled_tags,
             [],
             $photo->customTags->pluck('tag')->toArray(),
             []
@@ -201,7 +201,7 @@ class AdminController extends Controller
         $this->deletePhotoAction->run($photo);
 
         $tagUpdates = $this->calculateTagsDiffAction->run(
-            $photo->tags(),
+            $photo->compiled_tags,
             [],
             $photo->customTags->pluck('tag')->toArray(),
             []
@@ -276,8 +276,6 @@ class AdminController extends Controller
         $photo->public_friendly = $request->publicFriendly;
         $photo->save();
 
-        $oldTags = $photo->tags();
-
         $user = User::find($photo->user_id);
         $user->save();
 
@@ -339,7 +337,7 @@ class AdminController extends Controller
             ->count();
 
         return [
-            'photo' => $photo,
+            'photo' => $photo ? $photo->append('compiled_tags') : null,
             'photosNotProcessed' => $photosNotProcessed,
             'photosAwaitingVerification' => $photosAwaitingVerification
         ];

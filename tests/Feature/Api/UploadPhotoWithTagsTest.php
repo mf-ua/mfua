@@ -4,7 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Events\ImageUploaded;
 use App\Events\Photo\IncrementPhotoMonth;
-use App\Models\Litter\Categories\MilitaryEquipmentRemnant;
+use App\Models\Tag;
 use App\Models\Teams\Team;
 use App\Models\User\User;
 use Illuminate\Http\UploadedFile;
@@ -29,11 +29,10 @@ class UploadPhotoWithTagsTest extends TestCase
     {
         Storage::fake('s3');
         Storage::fake('bbox');
-
         Event::fake([ImageUploaded::class, IncrementPhotoMonth::class]);
-
         Carbon::setTestNow(now());
 
+        $tag = Tag::factory()->create();
         $user = User::factory()->create([
             'active_team' => Team::factory()
         ]);
@@ -45,7 +44,7 @@ class UploadPhotoWithTagsTest extends TestCase
         $response = $this->post('/api/photos/submit-with-tags',
             array_merge(
                 $this->getApiImageAttributes($imageAttributes),
-                ['tags' => json_encode(['military_equipment_remnant' => ['weapon' => 3]])]
+                ['tags' => json_encode([$tag->category->name => [$tag->name => 3]])]
             )
         );
 
@@ -60,9 +59,8 @@ class UploadPhotoWithTagsTest extends TestCase
         $this->assertCount(1, $user->photos);
         $this->assertEquals($imageAttributes['imageName'], $photo->filename);
         $this->assertEquals($imageAttributes['dateTime'], $photo->datetime);
-        $this->assertNotNull($photo->military_equipment_remnant_id);
-        $this->assertInstanceOf(MilitaryEquipmentRemnant::class, $photo->military_equipment_remnant);
-        $this->assertEquals(3, $photo->military_equipment_remnant->weapon);
+        $this->assertCount(1, $photo->tags);
+        $this->assertEquals(3, $photo->tags->first()->pivot->quantity);
 
         Event::assertDispatched(ImageUploaded::class);
         Event::assertDispatched(IncrementPhotoMonth::class);
@@ -75,11 +73,12 @@ class UploadPhotoWithTagsTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user, 'api');
         $imageAttributes = $this->getImageAndAttributes();
+        $tag = Tag::factory()->create();
 
         // User marks the litter as picked up -------------------
         $this->post('/api/photos/submit-with-tags',
             array_merge($this->getApiImageAttributes($imageAttributes), [
-                'tags' => json_encode(['military_equipment_remnant' => ['weapon' => 3]]),
+                'tags' => json_encode([$tag->category->name => [$tag->name => 3]]),
                 'picked_up' => true
             ])
         );
@@ -89,7 +88,7 @@ class UploadPhotoWithTagsTest extends TestCase
         // User marks the litter as not picked up -------------------
         $this->post('/api/photos/submit-with-tags',
             array_merge($this->getApiImageAttributes($imageAttributes), [
-                'tags' => json_encode(['military_equipment_remnant' => ['weapon' => 3]]),
+                'tags' => json_encode([$tag->category->name => [$tag->name => 3]]),
                 'picked_up' => false
             ])
         );
@@ -102,7 +101,7 @@ class UploadPhotoWithTagsTest extends TestCase
         $user->save();
         $this->post('/api/photos/submit-with-tags',
             array_merge($this->getApiImageAttributes($imageAttributes), [
-                'tags' => json_encode(['military_equipment_remnant' => ['weapon' => 3]]),
+                'tags' => json_encode([$tag->category->name => [$tag->name => 3]]),
             ])
         );
 
@@ -115,14 +114,6 @@ class UploadPhotoWithTagsTest extends TestCase
             [
                 'fields' => [],
                 'errors' => ['photo', 'lat', 'lon', 'date', 'tags'],
-            ],
-            [
-                'fields' => ['photo' => UploadedFile::fake()->image('some.pdf'), 'lat' => 5, 'lon' => 5, 'date' => now()->toDateTimeString(), 'tags' => json_encode(['military_equipment_remnant' => ['weapon' => 3]])],
-                'errors' => ['photo']
-            ],
-            [
-                'fields' => ['photo' => 'validImage', 'lat' => 'asdf', 'lon' => 'asdf', 'date' => now()->toDateTimeString(), 'tags' => json_encode(['military_equipment_remnant' => ['weapon' => 3]])],
-                'errors' => ['lat', 'lon']
             ],
             [
                 'fields' => ['photo' => 'validImage', 'lat' => 5, 'lon' => 5, 'date' => now()->toDateTimeString(), 'tags' => 'test'],
@@ -147,5 +138,35 @@ class UploadPhotoWithTagsTest extends TestCase
         $this->postJson('/api/photos/submit-with-tags', $fields)
             ->assertStatus(422)
             ->assertJsonValidationErrors($errors);
+    }
+
+    public function test_the_uploaded_photo_needs_to_be_geotagged()
+    {
+        $tag = Tag::factory()->create();
+        $user = User::factory()->create();
+        $this->actingAs($user, 'api');
+
+        $this->postJson('/api/photos/submit-with-tags', [
+            'photo' => UploadedFile::fake()->image('some.pdf'),
+            'lat' => 5, 'lon' => 5, 'date' => now()->toDateTimeString(),
+            'tags' => json_encode([$tag->category->name => [$tag->name => 3]])
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['photo']);
+    }
+
+    public function test_lat_and_lon_need_to_be_floats()
+    {
+        $user = User::factory()->create();
+        $tag = Tag::factory()->create();
+        $this->actingAs($user, 'api');
+
+        $this->postJson('/api/photos/submit-with-tags', [
+            'photo' => $this->getApiImageAttributes($this->getImageAndAttributes()),
+            'lat' => 'asdf', 'lon' => 'asdfasdf', 'date' => now()->toDateTimeString(),
+            'tags' => json_encode([$tag->category->name => [$tag->name => 3]])
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['lat', 'lon']);
     }
 }

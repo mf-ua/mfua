@@ -4,10 +4,7 @@ namespace App\Http\Controllers\GlobalMap;
 
 use App\Models\Photo;
 use App\Traits\FilterPhotosByGeoHashTrait;
-
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 
 class GlobalMapController extends Controller
 {

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Teams;
 
 use App\Events\TagsVerifiedByAdmin;
+use App\Models\Tag;
 use App\Models\Teams\Team;
 use App\Models\User\User;
 use Illuminate\Support\Facades\Event;
@@ -26,6 +27,7 @@ class TrustedTeamsTest extends TestCase
 
     public function test_photos_uploaded_by_users_of_trusted_teams_are_verified_automatically()
     {
+        $tag = Tag::factory()->create();
         Event::fake();
 
         // User is not verified
@@ -49,7 +51,7 @@ class TrustedTeamsTest extends TestCase
         $this->post('/add-tags', [
             'photo_id' => $photo->id,
             'picked_up' => true,
-            'tags' => ['military_equipment_remnant' => ['weapon' => 3]]
+            'tags' => [$tag->category->name => [$tag->name => 3]]
         ]);
 
         // The photo is automatically verified
@@ -63,6 +65,7 @@ class TrustedTeamsTest extends TestCase
 
     public function test_photos_uploaded_by_api_users_of_trusted_teams_are_verified_automatically()
     {
+        $tag = Tag::factory()->create();
         Event::fake();
 
         // User is not verified
@@ -83,7 +86,7 @@ class TrustedTeamsTest extends TestCase
         $photo = $user->fresh()->photos->last();
         $this->post('/api/add-tags', [
             'photo_id' => $photo->id,
-            'tags' => ['military_equipment_remnant' => ['weapon' => 3]]
+            'tags' => [$tag->category->name => [$tag->name => 3]]
         ]);
 
         // The photo is automatically verified
