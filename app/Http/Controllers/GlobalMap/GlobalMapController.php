@@ -5,6 +5,7 @@ namespace App\Http\Controllers\GlobalMap;
 use App\Models\Photo;
 use App\Traits\FilterPhotosByGeoHashTrait;
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\Builder;
 
 class GlobalMapController extends Controller
 {
@@ -32,7 +33,9 @@ class GlobalMapController extends Controller
                 'datetime',
                 'public_friendly'
             )
-//            ->where('public_friendly', true)
+            ->when(!(auth()->user() && auth()->user()->isAdmin()), function (Builder $q) {
+                $q->where('public_friendly', true);
+            })
             ->with([
                 'user' => function ($query) {
                     $query->where('users.show_name_maps', 1)

@@ -25,9 +25,7 @@ const helper = {
         }
 
         let tags = '';
-        let a = tagsString.split(',');
-
-        a.pop();
+        let a = tagsString.split(', ');
 
         a.forEach(i => {
             let b = i.split(' ');

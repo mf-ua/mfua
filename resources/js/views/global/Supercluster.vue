@@ -284,8 +284,8 @@ export default {
             // Remove points when zooming out
             if (points)
             {
+                if (window.isAdmin) adminClusters.clearLayers();
                 publicClusters.clearLayers();
-                adminClusters.clearLayers();
                 points.remove();
             }
 
@@ -421,7 +421,6 @@ export default {
                         if (prevZoom < CLUSTER_ZOOM_THRESHOLD)
                         {
                             publicClusters.clearLayers();
-                            adminClusters.clearLayers();
                         }
 
                         const data = response.data.features.map(feature => {

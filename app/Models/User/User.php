@@ -294,4 +294,9 @@ class User extends Authenticatable
     {
         return $this->teams()->where('team_id', $teamId)->exists();
     }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
 }
