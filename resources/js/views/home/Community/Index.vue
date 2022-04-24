@@ -2,10 +2,10 @@
     <div>
         <HeroSection/>
         <StatsSection/>
-        <SocialSection/>
-        <ZoomSection/>
-        <SlackSection/>
-        <FundraiserSection/>
+<!--        <SocialSection/>-->
+<!--        <ZoomSection/>-->
+<!--        <SlackSection/>-->
+<!--        <FundraiserSection/>-->
     </div>
 </template>
 
