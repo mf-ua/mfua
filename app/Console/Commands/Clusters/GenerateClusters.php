@@ -34,10 +34,17 @@ class GenerateClusters extends Command
 
         $start = microtime(true);
 
-        foreach ($this->getYearsWithNewPhotos() as $year) {
-            $this->line("\nYear: " . ($year ?: 'All Time'));
-            $this->generateFeatures($year);
-            $this->generateClusters($year);
+        $pubicFriendlyTypes = [true, false];
+
+        foreach ($pubicFriendlyTypes as $publicFriendly)
+        {
+            foreach ($this->getYearsWithNewPhotos() as $year)
+            {
+                $this->line("\nPublic Friendly: " . $publicFriendly);
+                $this->line("\nYear: " . ($year ?: 'All Time'));
+                $this->generateFeatures($year, $publicFriendly);
+                $this->generateClusters($year, $publicFriendly);
+            }
         }
 
         $finish = microtime(true);
@@ -56,11 +63,13 @@ class GenerateClusters extends Command
      *
      * We save this file to storage and use it to populate the clusters with a node script in the backend
      */
-    protected function generateFeatures (int $year = null): void
+    protected function generateFeatures (int $year = null, bool $publicFriendly = false): void
     {
         $this->info('Generating features...');
 
-        $photos = Photo::query()->select('lat', 'lon');
+        $photos = Photo::query()
+            ->where('public_friendly', $publicFriendly)
+            ->select('lat', 'lon');
 
         if ($year) {
             $photos->whereYear('datetime', $year);
@@ -100,9 +109,8 @@ class GenerateClusters extends Command
      * Using the features.json file, we cluster our data at various zoom levels.
      *
      * First, we need to delete all clusters. Then we re-create them from scratch.
-     *
      */
-    protected function generateClusters (int $year = null): void
+    protected function generateClusters (int $year = null, bool $publicFriendly = false): void
     {
         $this->info("Generating clusters for each zoom level...");
 
@@ -132,7 +140,7 @@ class GenerateClusters extends Command
                 ->filter(function ($cluster) {
                     return isset($cluster->properties);
                 })
-                ->map(function ($cluster) use ($zoomLevel, $year) {
+                ->map(function ($cluster) use ($zoomLevel, $year, $publicFriendly) {
                     return [
                         'lat' => $cluster->geometry->coordinates[1],
                         'lon' => $cluster->geometry->coordinates[0],
@@ -140,7 +148,8 @@ class GenerateClusters extends Command
                         'point_count_abbreviated' => $cluster->properties->point_count_abbreviated,
                         'geohash' => \GeoHash::encode($cluster->geometry->coordinates[1], $cluster->geometry->coordinates[0]),
                         'zoom' => $zoomLevel,
-                        'year' => $year
+                        'year' => $year,
+                        'public_friendly' => $publicFriendly
                     ];
                 })
                 ->chunk(1000)

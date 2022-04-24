@@ -4,7 +4,9 @@
         <div id="super" ref="super" />
 
         <!-- Websockets -->
-        <LiveEvents @fly-to-location="flyToLocation" />
+        <LiveEvents
+            @fly-to-location="flyToLocation"
+        />
     </div>
 </template>
 
@@ -30,7 +32,7 @@ import dropdown from './select-dropdown';
 
 var map;
 var clusters;
-var litterArtPoints;
+var publicClusters, adminClusters;
 var points;
 var prevZoom = MIN_ZOOM;
 
@@ -105,8 +107,12 @@ function createGlobalGroups ()
     {
         globalLayerController = L.control.layers(null, null).addTo(map);
 
-        globalLayerController.addOverlay(clusters, 'Global');
-        globalLayerController.addOverlay(litterArtPoints, 'Litter Art');
+        if (window.isAdmin)
+        {
+            globalLayerController.addOverlay(adminClusters, 'Admin');
+        }
+
+        globalLayerController.addOverlay(publicClusters, 'Public Friendly');
 
         globalControllerShowing = true;
     }
@@ -160,45 +166,6 @@ function onEachFeature (feature, layer)
 }
 
 /**
- * On each art point...
- *
- * Todo: Smooth zoom to that piece
- */
-function onEachArtFeature (feature, layer)
-{
-    layer.on('click', function (e)
-    {
-        map.flyTo(feature.geometry.coordinates, 14, {
-            animate: true,
-            duration: 10
-        });
-
-        const user = mapHelper.formatUserName(feature.properties.name, feature.properties.username);
-
-        const url = new URL(window.location.href);
-        url.searchParams.set('lat', feature.geometry.coordinates[0]);
-        url.searchParams.set('lon', feature.geometry.coordinates[1]);
-        url.searchParams.set('zoom', CLUSTER_ZOOM_THRESHOLD);
-        url.searchParams.set('photo', feature.properties.photo_id);
-
-        L.popup(mapHelper.popupOptions)
-            .setLatLng(feature.geometry.coordinates)
-            .setContent(
-                mapHelper.getMapImagePopupContent(
-                    feature.properties.filename,
-                    feature.properties.result_string,
-                    feature.properties.datetime,
-                    feature.properties.picked_up,
-                    user,
-                    feature.properties.team,
-                    url.toString()
-                )
-            )
-            .openOn(map);
-    });
-}
-
-/**
  * Get any active layers
  *
  * @return layers|null
@@ -231,18 +198,20 @@ export default {
             visiblePoints: []
         }
     },
-    mounted ()
-    {
+    mounted () {
         /** 1. Create map object */
         map = L.map('super', {
-            center: [0, 0],
-            zoom: MIN_ZOOM,
+            center: [0,0],
+            zoom: 0,
             scrollWheelZoom: false,
             smoothWheelZoom: true,
             smoothSensitivity: 1,
         });
 
         map.scrollWheelZoom = true;
+
+        // bind vue instance to the window so we can access it outside of Vue
+        window.mfua = this;
 
         this.flyToLocationFromURL();
 
@@ -258,24 +227,24 @@ export default {
             minZoom: MIN_ZOOM
         }).addTo(map);
 
-        map.attributionControl.addAttribution('Litter data &copy OpenLitterMap & Contributors ' + year + ' Clustering @ MapBox');
+        map.attributionControl.addAttribution('Litter data &copy MineFree.info & Contributors ' + year + ' Clustering @ MapBox');
 
         // Empty Layer Group that will receive the clusters data on the fly.
-        clusters = L.geoJSON(null, {
+        publicClusters = L.geoJSON(null, {
             pointToLayer: createClusterIcon,
             onEachFeature: onEachFeature,
         }).addTo(map);
 
-        // TODO refactor this out
-        clusters.addData(this.$store.state.globalmap.geojson.features);
+        publicClusters.addData(this.$store.state.globalmap.publicGeojson.features);
 
-        litterArtPoints = L.geoJSON(null, {
-            pointToLayer: createArtIcon,
-            onEachFeature: onEachArtFeature
-        });
+        if (this.$store.state.user.admin) {
+            adminClusters = L.geoJSON(null, {
+                pointToLayer: createClusterIcon,
+                onEachFeature: onEachFeature,
+            }).addTo(map);
 
-        // TODO refactor this out too
-        litterArtPoints.addData(this.$store.state.globalmap.artData.features);
+            adminClusters.addData(this.$store.state.globalmap.adminGeojson.features);
+        }
 
         map.on('moveend', this.update);
 
@@ -315,7 +284,8 @@ export default {
             // Remove points when zooming out
             if (points)
             {
-                clusters.clearLayers();
+                if (window.isAdmin) adminClusters.clearLayers();
+                publicClusters.clearLayers();
                 points.remove();
             }
 
@@ -327,6 +297,26 @@ export default {
             {
                 createGlobalGroups();
 
+                if (window.isAdmin)
+                {
+                    await axios.get('/admin/global/clusters', {
+                        params: {
+                            zoom,
+                            bbox,
+                            year
+                        }
+                    })
+                    .then(response => {
+                        console.log('admin_get_clusters.update', response);
+
+                        adminClusters.clearLayers();
+                        adminClusters.addData(response.data);
+                    })
+                    .catch(error => {
+                        console.error('admin_get_clusters.update', error);
+                    });
+                }
+
                 await axios.get('/global/clusters', {
                     params: {
                         zoom,
@@ -337,8 +327,8 @@ export default {
                 .then(response => {
                     console.log('get_clusters.update', response);
 
-                    clusters.clearLayers();
-                    clusters.addData(response.data);
+                    publicClusters.clearLayers();
+                    publicClusters.addData(response.data);
                 })
                 .catch(error => {
                     console.error('get_clusters.update', error);
@@ -350,52 +340,117 @@ export default {
 
                 const layers = getActiveLayers();
 
-                await axios.get('/global/points', {
-                    params: {
-                        zoom,
-                        bbox,
-                        layers,
-                        year
-                    }
-                })
-                .then(response => {
-                    console.log('get_global_points', response);
+                if (window.isAdmin)
+                {
+                    await axios.get('/global/points', {
+                        params: {
+                            zoom,
+                            bbox,
+                            layers,
+                            year
+                        }
+                    })
+                    .then(response => {
+                        console.log('admin_get_global_points', response);
 
-                    this.visiblePoints = response.data.features;
+                        // Clear layer if prev layer is cluster.
+                        if (prevZoom < CLUSTER_ZOOM_THRESHOLD)
+                        {
+                            publicClusters.clearLayers();
+                            adminClusters.clearLayers();
+                        }
 
-                    // Clear layer if prev layer is cluster.
-                    if (prevZoom < CLUSTER_ZOOM_THRESHOLD)
-                    {
-                        clusters.clearLayers();
-                    }
+                        const data = response.data.features.map(feature => {
+                            return [feature.geometry.coordinates[0], feature.geometry.coordinates[1]];
+                        });
 
-                    const data = response.data.features.map(feature => {
-                        return [feature.geometry.coordinates[0], feature.geometry.coordinates[1]];
+                        // New way using webGL
+                        points = glify.points({
+                            map,
+                            data,
+                            size: 10,
+                            color: (e, point) => {
+
+                                const feature = response.data.features.find(f => {
+                                    return f.geometry.coordinates[0] === point[0]
+                                        && f.geometry.coordinates[1] === point[1];
+                                });
+
+                                if (!feature) {
+                                    return;
+                                }
+
+                                return (feature.properties.public_friendly)
+                                    ? { r: 0.054, g: 0.819, b: 0.27, a: 1 }
+                                    : { r: 1, g: 0, b: 0, a: 1 };
+                            },
+                            click:  (e, point, xy) => {
+                                const feature = response.data.features.find(f => {
+                                    return f.geometry.coordinates[0] === point[0]
+                                        && f.geometry.coordinates[1] === point[1];
+                                });
+
+                                if (!feature) {
+                                    return;
+                                }
+
+                                return this.renderLeafletPopup(feature, e.latlng)
+                            },
+                        });
+                    })
+                    .catch(error => {
+                        console.error('admin_get_global_points', error);
                     });
+                }
+                else
+                {
+                    await axios.get('/global/points', {
+                        params: {
+                            zoom,
+                            bbox,
+                            layers,
+                            year
+                        }
+                    })
+                    .then(response => {
+                        console.log('get_global_points', response);
 
-                    // New way using webGL
-                    points = glify.points({
-                        map,
-                        data,
-                        size: 10,
-                        color: { r: 0.054, g: 0.819, b: 0.27, a: 1 }, // 14, 209, 69 / 255
-                        click:  (e, point, xy) => {
-                            const feature = response.data.features.find(f => {
-                                return f.geometry.coordinates[0] === point[0]
-                                    && f.geometry.coordinates[1] === point[1];
-                            });
+                        this.visiblePoints = response.data.features;
 
-                            if (!feature) {
-                                return;
-                            }
+                        // Clear layer if prev layer is cluster.
+                        if (prevZoom < CLUSTER_ZOOM_THRESHOLD)
+                        {
+                            publicClusters.clearLayers();
+                        }
 
-                            return this.renderLeafletPopup(feature, e.latlng)
-                        },
+                        const data = response.data.features.map(feature => {
+                            return [feature.geometry.coordinates[0], feature.geometry.coordinates[1]];
+                        });
+
+                        // New way using webGL
+                        points = glify.points({
+                            map,
+                            data,
+                            size: 10,
+                            color: { r: 0.054, g: 0.819, b: 0.27, a: 1 }, // 14, 209, 69 / 255
+                            click:  (e, point, xy) => {
+                                const feature = response.data.features.find(f => {
+                                    return f.geometry.coordinates[0] === point[0]
+                                        && f.geometry.coordinates[1] === point[1];
+                                });
+
+                                if (!feature) {
+                                    return;
+                                }
+
+                                return this.renderLeafletPopup(feature, e.latlng)
+                            },
+                        });
+                    })
+                    .catch(error => {
+                        console.error('get_global_points', error);
                     });
-                })
-                .catch(error => {
-                    console.error('get_global_points', error);
-                });
+                }
             }
 
             prevZoom = zoom;
@@ -427,7 +482,8 @@ export default {
                         feature.properties.picked_up,
                         user,
                         feature.properties.team,
-                        url.toString()
+                        url.toString(),
+                        feature.properties.public_friendly
                     )
                 )
                 .openOn(map);

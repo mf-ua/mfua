@@ -25,9 +25,7 @@ const helper = {
         }
 
         let tags = '';
-        let a = tagsString.split(',');
-
-        a.pop();
+        let a = tagsString.split(', ');
 
         a.forEach(i => {
             let b = i.split(' ');
@@ -96,9 +94,10 @@ const helper = {
      * @param user
      * @param team
      * @param url
+     * @param publicFriendly
      * @returns {string}
      */
-    getMapImagePopupContent: (imageUrl, tagsString, takenOn, pickedUp, user, team, url = null) => {
+    getMapImagePopupContent: (imageUrl, tagsString, takenOn, pickedUp, user, team, url = null, publicFriendly = null) => {
         const tags = helper.parseTags(tagsString);
         const takenDateString = helper.formatPhotoTakenTime(takenOn);
         const teamFormatted = helper.formatTeam(team);
@@ -113,6 +112,7 @@ const helper = {
                 alt="Litter photo"
             />
             <div class="leaflet-litter-img-container">
+                <p>Public Friendly: ${publicFriendly ? 'Yes' : 'No'}</p>
                 <p>${tags}</p>
                 ${!isLitterArt ? ('<p>' + pickedUpFormatted + '</p>') : ''}
                 <p>${takenDateString}</p>

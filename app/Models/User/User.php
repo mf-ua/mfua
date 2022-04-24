@@ -129,12 +129,14 @@ class User extends Authenticatable
     {
         $totals = [];
 
-        /** @var Category $category */
-        foreach (Category::all() as $category) {
-            $totals[$category->name] = (int)Redis::hget("user:$this->id", $category->name);
-        }
-
         return $totals;
+
+//        /** @var Category $category */
+//        foreach (Category::all() as $category) {
+//            $totals[$category->name] = (int)Redis::hget("user:$this->id", $category->name);
+//        }
+//
+//        return $totals;
     }
 
     /**
@@ -293,5 +295,10 @@ class User extends Authenticatable
     public function isMemberOfTeam(int $teamId): bool
     {
         return $this->teams()->where('team_id', $teamId)->exists();
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
     }
 }

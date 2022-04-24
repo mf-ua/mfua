@@ -77,7 +77,6 @@ Route::post('/contact-us', 'ContactUsController')->name('contact');
 Route::get('global', 'HomeController@index');
 Route::get('/global/clusters', 'GlobalMap\ClusterController@index');
 Route::get('/global/points', 'GlobalMap\GlobalMapController@index');
-Route::get('/global/art-data', 'GlobalMap\GlobalMapController@artData');
 
 /** Auth Routes */
 
@@ -265,10 +264,13 @@ Route::get('/nav', function () {
 /**
  * ADMIN
  */
-Route::group(['prefix' => '/admin'], function () {
+Route::group(['prefix' => '/admin'], function ()
+{
+    Route::get('/global/clusters', 'Admin\AdminClusterController@index');
 
     // route
     Route::get('photos', 'HomeController@index');
+    Route::get('map', 'HomeController@index');
 
     // get the data
     Route::get('get-image', 'AdminController@getImage');
@@ -289,14 +291,14 @@ Route::group(['prefix' => '/admin'], function () {
     Route::post('/contentsupdatedelete', 'AdminController@updateDelete');
 
     // Contents of an image updated, Keep the image
-    Route::post('/update-tags', 'AdminController@updateTags');
+    Route::post('/update-tags', 'AdminController@clusters');
 
     // Delete an image and its record
     Route::post('/destroy', 'AdminController@destroy');
 });
 
-Route::group(['prefix' => '/bbox', 'middleware' => ['can_bbox']], function () {
-
+Route::group(['prefix' => '/bbox', 'middleware' => ['can_bbox']], function ()
+{
     // Add coordinates
     Route::get('/', 'HomeController@index');
 

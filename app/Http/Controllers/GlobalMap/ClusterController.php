@@ -20,7 +20,7 @@ class ClusterController extends Controller
      * @param Request $request
      * @return array
      */
-    public function index(Request $request): array
+    public function index (Request $request): array
     {
         $clusters = $this->getClusters($request);
 
@@ -36,7 +36,7 @@ class ClusterController extends Controller
      * @param Request $request
      * @return Builder[]|Collection
      */
-    protected function getClusters(Request $request)
+    protected function getClusters (Request $request)
     {
         $query = Cluster::query();
 

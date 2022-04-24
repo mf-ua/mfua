@@ -54,10 +54,11 @@ export const actions = {
     /**
      * Verify the image as correct (stage 2)
      */
-    async ADMIN_VERIFY_CORRECT (context)
+    async ADMIN_VERIFY_CORRECT (context, payload)
     {
         await axios.post('/admin/verifykeepimage', {
-            photoId: context.state.photo.id
+            photoId: context.state.photo.id,
+            publicFriendly: payload
         })
         .then(resp => {
             console.log('admin_verifiy_correct', resp);
@@ -77,11 +78,13 @@ export const actions = {
         await axios.post('/admin/contentsupdatedelete', {
             photoId: context.state.photo.id,
             // categories: categories todo
-        }).then(response => {
+        })
+        .then(response => {
             console.log('admin_verify_delete', response);
 
             context.dispatch('GET_NEXT_ADMIN_PHOTO');
-        }).catch(error => {
+        })
+        .catch(error => {
             console.log(error);
         });
     },
@@ -89,14 +92,15 @@ export const actions = {
     /**
      * Verify the image, and update with new tags
      */
-    async ADMIN_UPDATE_WITH_NEW_TAGS (context)
+    async ADMIN_UPDATE_WITH_NEW_TAGS (context, payload)
     {
         let photoId = context.state.photo.id;
 
         await axios.post('/admin/update-tags', {
             photoId: photoId,
             tags: context.rootState.litter.tags[photoId],
-            custom_tags: context.rootState.litter.customTags[photoId]
+            custom_tags: context.rootState.litter.customTags[photoId],
+            publicFriendly: payload
         })
         .then(response => {
             console.log('admin_verify_keep', response);
@@ -168,5 +172,29 @@ export const actions = {
             .catch(err => {
                 console.error(err);
             });
+    },
+
+    /**
+     * Get the clusters that are not public friendly for admin only
+     *
+     * Includes backend middleware checl
+     */
+    async ADMIN_GET_CLUSTERS (context, payload)
+    {
+        await axios.get('/admin/global/clusters', {
+            params: {
+                zoom: payload.zoom,
+                year: payload.year,
+                bbox: null
+            }
+        })
+        .then(response => {
+            console.log('admin_get_clusters', response);
+
+            context.commit('updateGlobalAdminClusters', response.data);
+        })
+        .catch(error => {
+            console.error('admin_get_clusters', error);
+        });
     }
 };

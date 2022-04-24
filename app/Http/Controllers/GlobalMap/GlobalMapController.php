@@ -4,26 +4,15 @@ namespace App\Http\Controllers\GlobalMap;
 
 use App\Models\Photo;
 use App\Traits\FilterPhotosByGeoHashTrait;
-
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\Builder;
 
 class GlobalMapController extends Controller
 {
     use FilterPhotosByGeoHashTrait;
 
     /**
-     * Return the Art data for the global map
-     *
-     * @return array points
-     */
-    public function artData(): array
-    {
-        return $this->photosToGeojson(collect([]));
-    }
-
-    /**
-     * Get photos point data at zoom levels 16 or above
+     * Get public friendly point data at zoom levels 16 or above
      *
      * @return array
      */
@@ -41,8 +30,12 @@ class GlobalMapController extends Controller
                 'lat',
                 'lon',
                 'remaining',
-                'datetime'
+                'datetime',
+                'public_friendly'
             )
+            ->when(!(auth()->user() && auth()->user()->isAdmin()), function (Builder $q) {
+                $q->where('public_friendly', true);
+            })
             ->with([
                 'user' => function ($query) {
                     $query->where('users.show_name_maps', 1)

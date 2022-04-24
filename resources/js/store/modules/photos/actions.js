@@ -1,5 +1,4 @@
 export const actions = {
-
     /**
      * MyPhotos.vue the user has confirmed they want to delete the selected photos
      */

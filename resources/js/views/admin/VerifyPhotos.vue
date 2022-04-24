@@ -24,10 +24,10 @@
         <div class="container is-fluid mt3">
 
             <loading
-            v-if="loading"
-            :active.sync="loading"
-            :is-full-page="true"
-        />
+                v-if="loading"
+                :active.sync="loading"
+                :is-full-page="true"
+            />
 
             <div v-else>
 
@@ -80,25 +80,44 @@
                             <img v-img="{sourceButton: true}" class="verify-image" :src="this.photo.filename" />
 
                             <div class="has-text-centered mb1">
-                                <button :class="verify_correct_button" :disabled="processing" @click="verifyCorrect">VERIFY CORRECT</button>
+                                <button
+                                    :class="verify_correct_button"
+                                    :disabled="processing"
+                                    @click="verifyCorrect"
+                                >Accept Original Tags</button>
 
-                                <button class="button is-large is-danger" :disabled="processing" @click="incorrect">FALSE</button>
+                                <button
+                                    class="button is-large is-danger"
+                                    :disabled="processing"
+                                    @click="incorrect"
+                                >False</button>
                             </div>
 
                             <!-- Add / edit tags -->
                             <div class="columns">
                                 <div class="column is-two-thirds is-offset-2">
-                                    <add-tags :admin="true" :id="photo.id" />
+                                    <add-tags
+                                        :admin="true"
+                                        :id="photo.id"
+                                    />
                                 </div>
                             </div>
 
                             <div style="padding-top: 1em; text-align: center;">
-                                <button :class="update_new_tags_button" @click="updateNewTags" :disabled="checkUpdateTagsDisabled">
+                                <button
+                                    :class="update_new_tags_button"
+                                    @click="updateNewTags"
+                                    :disabled="checkUpdateTagsDisabled"
+                                >
                                     <span class="tooltip-text is-size-6">Update the image and save the new data.</span>
                                     Update with new tags
                                 </button>
 
-                                <button class="button is-large is-info tooltip mb-1" @click="skipPhoto" :disabled="processing">
+                                <button
+                                    class="button is-large is-info tooltip mb-1"
+                                    @click="skipPhoto"
+                                    :disabled="processing"
+                                >
                                     <span class="tooltip-text is-size-6">Skip this photo and verify the next one.</span>
                                     Skip
                                 </button>
@@ -107,6 +126,15 @@
 
                         <!-- Right - Tags -->
                         <div class="column has-text-centered" style="position: relative;">
+
+                            <div class="flex mb1">
+                                <p class="category flex-1" style="font-size: 1.25em; text-align: left;">Public Friendly</p>
+
+                                <label class="switch">
+                                    <input type="checkbox" :checked="publicFriendly" @change="togglePublicFriendly">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
 
                             <!-- The list of tags associated with this image-->
                             <Tags
@@ -162,8 +190,8 @@ export default {
 			deleteButton: 'button is-large is-danger mb1 tooltip',
 			deleteVerify: 'button is-large is-warning mb1 tooltip',
 			verifyClass: 'button is-large is-success mb1 tooltip',
-
             selectedCountry: '',
+            publicFriendly: false
 		};
 	},
 	computed: {
@@ -298,7 +326,7 @@ export default {
 		{
 			this.processing = true;
 
-			await this.$store.dispatch('ADMIN_VERIFY_CORRECT');
+			await this.$store.dispatch('ADMIN_VERIFY_CORRECT', this.publicFriendly);
 
 			this.processing = false;
 		},
@@ -320,7 +348,7 @@ export default {
 		{
 			this.processing = true;
 
-            await this.$store.dispatch('ADMIN_UPDATE_WITH_NEW_TAGS');
+            await this.$store.dispatch('ADMIN_UPDATE_WITH_NEW_TAGS', this.publicFriendly);
 
             this.processing = false;
   		},
@@ -353,6 +381,13 @@ export default {
 
             this.loading = false;
         },
+
+        /**
+         * Make this image public friendly or not
+         */
+        togglePublicFriendly () {
+            this.publicFriendly = !this.publicFriendly;
+        }
 	}
 }
 </script>
@@ -376,6 +411,60 @@ export default {
 
     .recent-tags {
         border-radius: 8px;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 25px;
+        align-self: center;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #f14668;
+        -webkit-transition: .4s;
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        border-radius: 50%;
+        height: 18px;
+        width: 18px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        -webkit-transition: .4s;
+        transition: .4s;
+    }
+
+    input:checked + .slider {
+        background-color: #00d1b2;
+    }
+
+    input:focus + .slider {
+        box-shadow: 0 0 1px #00d1b2;
+    }
+
+    input:checked + .slider:before {
+        -webkit-transform: translateX(24px);
+        -ms-transform: translateX(24px);
+        transform: translateX(24px);
     }
 
 </style>

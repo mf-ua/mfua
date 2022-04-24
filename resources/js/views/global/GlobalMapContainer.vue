@@ -1,9 +1,15 @@
 <template>
     <div class="global-map-container" :style="{height: mapHeight}">
 
-        <loading v-if="loading" :active.sync="loading" :is-full-page="true" />
+        <loading
+            v-if="loading"
+            :active.sync="loading"
+            :is-full-page="true"
+        />
 
-        <supercluster v-else />
+        <supercluster
+            v-else
+        />
 
     </div>
 </template>
@@ -28,13 +34,21 @@ export default {
     {
         if (this.isMobile) this.addEventListenerIfMobile();
 
-        let year = parseInt((new URLSearchParams(window.location.search)).get('year')) || null;
+        const year = parseInt((new URLSearchParams(window.location.search)).get('year')) || null;
 
+        // Get public friendly clusters
         await this.$store.dispatch('GET_CLUSTERS', {
             zoom: 2,
             year: year
         });
-        await this.$store.dispatch('GET_ART_DATA');
+
+        if (this.$store.state.user.admin) {
+            // Get clusters that are not public friendly
+            await this.$store.dispatch('ADMIN_GET_CLUSTERS', {
+                zoom: 2,
+                year: year
+            });
+        }
 
         this.$store.commit('globalLoading', false);
     },
