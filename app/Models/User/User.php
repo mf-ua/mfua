@@ -129,12 +129,14 @@ class User extends Authenticatable
     {
         $totals = [];
 
-        /** @var Category $category */
-        foreach (Category::all() as $category) {
-            $totals[$category->name] = (int)Redis::hget("user:$this->id", $category->name);
-        }
-
         return $totals;
+
+//        /** @var Category $category */
+//        foreach (Category::all() as $category) {
+//            $totals[$category->name] = (int)Redis::hget("user:$this->id", $category->name);
+//        }
+//
+//        return $totals;
     }
 
     /**
